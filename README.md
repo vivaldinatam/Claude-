@@ -2,6 +2,9 @@
 
 Aplikasi absensi karyawan berbasis GPS untuk **Android, iOS, dan Web** (Flutter), dengan backend **Supabase**, ditambah **REST API untuk Agent AI**.
 
+**Versi web (live):** https://plum-deer-602931.hostingersite.com/app/
+Di-deploy oleh Hostinger dari branch `web-deploy` (hasil build, jangan diedit manual).
+
 ## Fitur
 
 | Modul | Fitur |
