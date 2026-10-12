@@ -1,0 +1,2001 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Absensi Karyawan - Agent API",
+        "version": "1.0.0",
+        "description": "REST API absensi karyawan untuk Agent AI dengan akses admin penuh. Semua waktu dalam ISO 8601 (UTC), tanggal YYYY-MM-DD, durasi dalam MENIT. Status absensi: hadir, terlambat, libur_masuk. Ganti jam: keterlambatan ditutup dengan kelebihan jam pulang (makeup_minutes); sisanya late_debt_minutes. Kelebihan setelah ganti jam = overtime_minutes, yang menjadi lembur resmi bila pengajuan lembur disetujui."
+    },
+    "servers": [
+        {
+            "url": "https://YOUR-PROJECT.supabase.co/functions/v1/agent-api"
+        }
+    ],
+    "security": [
+        {
+            "ApiKey": []
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "ApiKey": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "x-api-key"
+            }
+        },
+        "responses": {
+            "Error": {
+                "description": "Error",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "paths": {
+        "/summary/today": {
+            "get": {
+                "operationId": "getTodaySummary",
+                "summary": "Ringkasan kehadiran hari ini",
+                "description": "Status setiap karyawan aktif hari ini: hadir, terlambat, belum_absen, izin, sakit, cuti, libur, libur_masuk, tanpa_jadwal. Cocok untuk pertanyaan 'siapa yang terlambat/belum absen hari ini?'.",
+                "responses": {
+                    "200": {
+                        "description": "Ringkasan hari ini",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/recap": {
+            "get": {
+                "operationId": "getMonthlyRecap",
+                "summary": "Rekap bulanan per karyawan",
+                "description": "Hari kerja, hadir, alpa (absent_days), izin, sakit, cuti, jumlah & total menit terlambat, menit sudah diganti, sisa ganti jam, pulang cepat, lembur, lembur disetujui, sisa cuti.",
+                "parameters": [
+                    {
+                        "name": "month",
+                        "in": "query",
+                        "required": false,
+                        "description": "Bulan format YYYY-MM (default bulan ini)",
+                        "schema": {
+                            "type": "string",
+                            "example": "2026-10"
+                        }
+                    },
+                    {
+                        "name": "employee_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter satu karyawan",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar rekap",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/employees": {
+            "get": {
+                "operationId": "listEmployees",
+                "summary": "Daftar karyawan",
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "required": false,
+                        "description": "Cari nama / kode / email",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "active",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter aktif",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "required": false,
+                        "description": "admin atau employee",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "admin",
+                                "employee"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar karyawan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createEmployee",
+                "summary": "Buat akun karyawan baru (langsung aktif)",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "minLength": 6
+                                    },
+                                    "full_name": {
+                                        "type": "string"
+                                    },
+                                    "employee_code": {
+                                        "type": "string",
+                                        "description": "NIK / kode karyawan"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "position": {
+                                        "type": "string",
+                                        "description": "Jabatan"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "admin",
+                                            "employee"
+                                        ]
+                                    },
+                                    "schedule_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "ID jadwal kerja"
+                                    },
+                                    "annual_leave_quota": {
+                                        "type": "integer",
+                                        "description": "Kuota cuti tahunan (hari)"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "password",
+                                    "full_name"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Karyawan dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/employees/{id}": {
+            "get": {
+                "operationId": "getEmployee",
+                "summary": "Detail karyawan beserta jadwal & lokasi absensi",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Detail karyawan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "updateEmployee",
+                "summary": "Ubah data karyawan (aktivasi, jadwal, peran, kuota cuti, dll)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "full_name": {
+                                        "type": "string"
+                                    },
+                                    "employee_code": {
+                                        "type": "string",
+                                        "description": "NIK / kode karyawan"
+                                    },
+                                    "phone": {
+                                        "type": "string"
+                                    },
+                                    "position": {
+                                        "type": "string",
+                                        "description": "Jabatan"
+                                    },
+                                    "role": {
+                                        "type": "string",
+                                        "enum": [
+                                            "admin",
+                                            "employee"
+                                        ]
+                                    },
+                                    "schedule_id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "description": "ID jadwal kerja"
+                                    },
+                                    "annual_leave_quota": {
+                                        "type": "integer",
+                                        "description": "Kuota cuti tahunan (hari)"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Karyawan diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteEmployee",
+                "summary": "Hapus akun karyawan beserta seluruh datanya (permanen)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/employees/{id}/locations": {
+            "put": {
+                "operationId": "setEmployeeLocations",
+                "summary": "Atur lokasi absensi yang diizinkan (array kosong = semua lokasi aktif)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "location_ids"
+                                ],
+                                "properties": {
+                                    "location_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "uuid"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lokasi diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/locations": {
+            "get": {
+                "operationId": "listLocations",
+                "summary": "Daftar lokasi absensi",
+                "responses": {
+                    "200": {
+                        "description": "Daftar lokasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createLocation",
+                "summary": "Tambah lokasi absensi (titik GPS + radius)",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string"
+                                    },
+                                    "latitude": {
+                                        "type": "number"
+                                    },
+                                    "longitude": {
+                                        "type": "number"
+                                    },
+                                    "radius_m": {
+                                        "type": "integer",
+                                        "minimum": 10,
+                                        "maximum": 5000,
+                                        "description": "Radius absensi (meter)"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "latitude",
+                                    "longitude"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lokasi dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/locations/{id}": {
+            "get": {
+                "operationId": "getLocation",
+                "summary": "Detail lokasi",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Lokasi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "updateLocation",
+                "summary": "Ubah lokasi absensi",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "address": {
+                                        "type": "string"
+                                    },
+                                    "latitude": {
+                                        "type": "number"
+                                    },
+                                    "longitude": {
+                                        "type": "number"
+                                    },
+                                    "radius_m": {
+                                        "type": "integer",
+                                        "minimum": 10,
+                                        "maximum": 5000,
+                                        "description": "Radius absensi (meter)"
+                                    },
+                                    "is_active": {
+                                        "type": "boolean"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lokasi diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteLocation",
+                "summary": "Hapus lokasi",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/schedules": {
+            "get": {
+                "operationId": "listSchedules",
+                "summary": "Daftar jadwal kerja",
+                "responses": {
+                    "200": {
+                        "description": "Daftar jadwal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createSchedule",
+                "summary": "Tambah jadwal kerja",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "start_time": {
+                                        "type": "string",
+                                        "example": "08:00",
+                                        "description": "Jam masuk HH:MM"
+                                    },
+                                    "end_time": {
+                                        "type": "string",
+                                        "example": "17:00",
+                                        "description": "Jam pulang HH:MM"
+                                    },
+                                    "late_tolerance_min": {
+                                        "type": "integer",
+                                        "description": "Toleransi terlambat (menit)"
+                                    },
+                                    "work_days": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 7
+                                        },
+                                        "description": "Hari kerja ISO: 1=Senin ... 7=Minggu",
+                                        "example": [
+                                            1,
+                                            2,
+                                            3,
+                                            4,
+                                            5
+                                        ]
+                                    },
+                                    "min_overtime_min": {
+                                        "type": "integer",
+                                        "description": "Minimal kelebihan jam agar dihitung lembur"
+                                    },
+                                    "makeup_enabled": {
+                                        "type": "boolean",
+                                        "description": "Wajib ganti jam keterlambatan"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "start_time",
+                                    "end_time"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Jadwal dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/schedules/{id}": {
+            "get": {
+                "operationId": "getSchedule",
+                "summary": "Detail jadwal",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Jadwal",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "updateSchedule",
+                "summary": "Ubah jadwal kerja",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "start_time": {
+                                        "type": "string",
+                                        "example": "08:00",
+                                        "description": "Jam masuk HH:MM"
+                                    },
+                                    "end_time": {
+                                        "type": "string",
+                                        "example": "17:00",
+                                        "description": "Jam pulang HH:MM"
+                                    },
+                                    "late_tolerance_min": {
+                                        "type": "integer",
+                                        "description": "Toleransi terlambat (menit)"
+                                    },
+                                    "work_days": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 7
+                                        },
+                                        "description": "Hari kerja ISO: 1=Senin ... 7=Minggu",
+                                        "example": [
+                                            1,
+                                            2,
+                                            3,
+                                            4,
+                                            5
+                                        ]
+                                    },
+                                    "min_overtime_min": {
+                                        "type": "integer",
+                                        "description": "Minimal kelebihan jam agar dihitung lembur"
+                                    },
+                                    "makeup_enabled": {
+                                        "type": "boolean",
+                                        "description": "Wajib ganti jam keterlambatan"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Jadwal diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteSchedule",
+                "summary": "Hapus jadwal",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/attendances": {
+            "get": {
+                "operationId": "listAttendances",
+                "summary": "Data absensi (masuk/pulang, terlambat, ganti jam, lembur)",
+                "parameters": [
+                    {
+                        "name": "employee_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter karyawan",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "required": false,
+                        "description": "Tanggal tertentu",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "description": "Dari tanggal",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "description": "Sampai tanggal",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "description": "hadir | terlambat | libur_masuk",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "late_only",
+                        "in": "query",
+                        "required": false,
+                        "description": "Hanya yang terlambat",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "description": "Maks. baris (default 200, maks 1000)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar absensi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/attendances/{id}": {
+            "get": {
+                "operationId": "getAttendance",
+                "summary": "Detail absensi",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Absensi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "correctAttendance",
+                "summary": "Koreksi data absensi oleh admin (nilai disimpan apa adanya, tidak dihitung ulang)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "check_in_at": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "check_out_at": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    "late_minutes": {
+                                        "type": "integer"
+                                    },
+                                    "makeup_minutes": {
+                                        "type": "integer"
+                                    },
+                                    "late_debt_minutes": {
+                                        "type": "integer"
+                                    },
+                                    "early_leave_minutes": {
+                                        "type": "integer"
+                                    },
+                                    "overtime_minutes": {
+                                        "type": "integer"
+                                    },
+                                    "worked_minutes": {
+                                        "type": "integer"
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "hadir",
+                                            "terlambat",
+                                            "libur_masuk"
+                                        ]
+                                    },
+                                    "check_in_note": {
+                                        "type": "string"
+                                    },
+                                    "check_out_note": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Absensi dikoreksi",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteAttendance",
+                "summary": "Hapus data absensi",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/leave-requests": {
+            "get": {
+                "operationId": "listLeaveRequests",
+                "summary": "Daftar pengajuan izin / sakit / cuti",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "description": "pending | approved | rejected",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "description": "izin | sakit | cuti",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "izin",
+                                "sakit",
+                                "cuti"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "employee_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter karyawan",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "description": "Pengajuan yang berakhir setelah tanggal ini",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "description": "Pengajuan yang dimulai sebelum tanggal ini",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar pengajuan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createLeaveRequest",
+                "summary": "Buat pengajuan izin/sakit/cuti atas nama karyawan (status pending)",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "employee_id",
+                                    "type",
+                                    "start_date",
+                                    "end_date",
+                                    "reason"
+                                ],
+                                "properties": {
+                                    "employee_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "izin",
+                                            "sakit",
+                                            "cuti"
+                                        ]
+                                    },
+                                    "start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-10-12"
+                                    },
+                                    "end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-10-12"
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    },
+                                    "attachment_url": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pengajuan dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/leave-requests/{id}": {
+            "get": {
+                "operationId": "getLeaveRequest",
+                "summary": "Detail pengajuan",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pengajuan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteLeaveRequest",
+                "summary": "Hapus pengajuan",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/leave-requests/{id}/review": {
+            "post": {
+                "operationId": "reviewLeaveRequest",
+                "summary": "Setujui / tolak pengajuan izin, sakit, cuti (cuti dicek terhadap kuota tahunan)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "approve"
+                                ],
+                                "properties": {
+                                    "approve": {
+                                        "type": "boolean"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pengajuan diproses",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/overtime-requests": {
+            "get": {
+                "operationId": "listOvertimeRequests",
+                "summary": "Daftar pengajuan lembur",
+                "parameters": [
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "description": "pending | approved | rejected",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "approved",
+                                "rejected"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "employee_id",
+                        "in": "query",
+                        "required": false,
+                        "description": "Filter karyawan",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "description": "Dari tanggal",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "description": "Sampai tanggal",
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2026-10-12"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daftar pengajuan lembur",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createOvertimeRequest",
+                "summary": "Buat pengajuan lembur atas nama karyawan (status pending)",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "employee_id",
+                                    "work_date",
+                                    "requested_minutes",
+                                    "reason"
+                                ],
+                                "properties": {
+                                    "employee_id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                    },
+                                    "work_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-10-12"
+                                    },
+                                    "requested_minutes": {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    "reason": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pengajuan dibuat",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/overtime-requests/{id}": {
+            "get": {
+                "operationId": "getOvertimeRequest",
+                "summary": "Detail pengajuan lembur",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pengajuan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteOvertimeRequest",
+                "summary": "Hapus pengajuan lembur",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Terhapus",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/overtime-requests/{id}/review": {
+            "post": {
+                "operationId": "reviewOvertimeRequest",
+                "summary": "Setujui / tolak lembur (menit disetujui dibatasi kelebihan jam aktual)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": [
+                                    "approve"
+                                ],
+                                "properties": {
+                                    "approve": {
+                                        "type": "boolean"
+                                    },
+                                    "approved_minutes": {
+                                        "type": "integer",
+                                        "description": "Default = menit yang diajukan"
+                                    },
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Lembur diproses",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        },
+        "/settings": {
+            "get": {
+                "operationId": "getSettings",
+                "summary": "Pengaturan perusahaan",
+                "responses": {
+                    "200": {
+                        "description": "Pengaturan",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "updateSettings",
+                "summary": "Ubah pengaturan (zona waktu, mode ganti jam, batas akurasi GPS)",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "company_name": {
+                                        "type": "string"
+                                    },
+                                    "timezone": {
+                                        "type": "string",
+                                        "enum": [
+                                            "Asia/Jakarta",
+                                            "Asia/Makassar",
+                                            "Asia/Jayapura"
+                                        ]
+                                    },
+                                    "makeup_mode": {
+                                        "type": "string",
+                                        "enum": [
+                                            "same_day",
+                                            "monthly"
+                                        ]
+                                    },
+                                    "max_gps_accuracy_m": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pengaturan diperbarui",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {}
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Error"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Error"
+                    }
+                }
+            }
+        }
+    }
+}

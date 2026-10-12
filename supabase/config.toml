@@ -1,0 +1,4 @@
+# Konfigurasi Supabase CLI (hanya bagian yang relevan).
+# Agent API memakai API key sendiri (AGENT_API_KEY), bukan JWT Supabase.
+[functions.agent-api]
+verify_jwt = false
