@@ -168,7 +168,7 @@ $$;
 -- Pemanggil memakai service_role key (dipakai oleh Agent API / Edge Function)
 create or replace function public.is_service_role()
 returns boolean
-language sql stable
+language sql stable set search_path = ''
 as $$
   select coalesce(auth.jwt() ->> 'role', '') = 'service_role';
 $$;
@@ -176,7 +176,7 @@ $$;
 -- Jarak dua koordinat dalam meter (rumus Haversine)
 create or replace function public.distance_m(lat1 float8, lng1 float8, lat2 float8, lng2 float8)
 returns float8
-language sql immutable
+language sql immutable set search_path = ''
 as $$
   select 2 * 6371000 * asin(sqrt(
     power(sin(radians(lat2 - lat1) / 2), 2)
@@ -187,7 +187,7 @@ $$;
 -- Jumlah hari kerja (sesuai jadwal) dalam rentang tanggal
 create or replace function public.count_work_days(p_work_days int[], p_start date, p_end date)
 returns int
-language sql immutable
+language sql immutable set search_path = ''
 as $$
   select count(*)::int
   from generate_series(p_start, p_end, interval '1 day') d
