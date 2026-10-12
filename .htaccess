@@ -1,0 +1,13 @@
+# Absensi Karyawan - Flutter Web
+AddType application/wasm .wasm
+AddType application/javascript .mjs
+
+# Selalu ambil versi terbaru index & bootstrap setelah update
+<FilesMatch "^(index\.html|flutter_bootstrap\.js|flutter_service_worker\.js|version\.json|manifest\.json)$">
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</FilesMatch>
+
+# Wajib HTTPS (GPS di browser hanya jalan lewat HTTPS)
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
